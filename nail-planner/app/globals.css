@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme {
+  /* Our custom salon palette */
+  --color-salon-nude: #f9f6f2;
+  --color-salon-pink: #f8e3e3;
+  --color-salon-accent: #d4a373;
+  --color-salon-dark: #2d2d2d;
+
+  /* Adding a soft serif font for that luxury feel */
+  --font-serif: "Times New Roman", serif;
+}
+
+:root {
+  --background: var(--color-salon-nude);
+  --foreground: var(--color-salon-dark);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Custom Glow Calendar Styles */
+.rdp {
+  --rdp-accent-color: #d4a373;
+  --rdp-background-color: #f8e3e3;
+  margin: 0 auto;
+}
+
+/* 2. Custom Day Styling (Round & Gold Selection) */
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  background-color: #d4a373 !important; /* Force Gold */
+  color: white !important;
+  border-radius: 50%;
+}
+
+/* 3. The "Busy" Date Styling (Targeting our custom class) */
+.busy-date {
+  position: relative;
+  font-weight: 900 !important;
+  color: #d4a373 !important; /* Gold text */
+}
+
+/* If busy AND selected, keep white text */
+.rdp-day_selected.busy-date {
+  color: white !important;
+}
+
+/* Pulse Animation */
+@keyframes pulse-gold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 163, 115, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(212, 163, 115, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 163, 115, 0);
+  }
+}
+
+/* Ring for busy dates */
+/* Ring for busy dates */
+.busy-date::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px solid #d4a373 !important;
+  border-radius: 50%;
+  animation: pulse-gold 2s infinite;
+  pointer-events: none !important; /* 🔥 CRITICAL FIX: Allows clicks to pass through */
+}
+.rdp-day_selected.busy-date::before {
+  border-color: white !important; /* White ring if selected */
+  animation: none; /* No pulse if selected to be cleaner */
+}
+
+/* Hide native picker icons so they don't overlap with our custom ones */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
