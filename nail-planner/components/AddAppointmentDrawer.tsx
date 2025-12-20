@@ -1,6 +1,7 @@
 "use client";
 
 import { Drawer } from "vaul";
+import { toast } from "sonner";
 import {
   Plus,
   X,
@@ -12,7 +13,9 @@ import {
   StickyNote,
   Image as ImageIcon,
   Loader2,
+  Banknote,
 } from "lucide-react";
+import { formatRupiah } from "@/lib/utils";
 import { m } from "framer-motion";
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
@@ -37,14 +40,22 @@ export default function AddAppointmentDrawer({
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [price, setPrice] = useState(""); // Raw number string
   const [service, setService] = useState("Gel Manicure");
   const [time, setTime] = useState("");
   const [date, setDate] = useState(new Date().toLocaleDateString("en-CA")); // 🔥 Correct local date
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper to format input display
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove non-digit characters
+    const numericValue = e.target.value.replace(/\D/g, "");
+    setPrice(numericValue);
+  };
+
   const handleBooking = async () => {
-    if (!name || !time) return alert("Please fill in all fields!");
+    if (!name || !time) return toast.error("Please fill in all fields!");
 
     // 1. Optimistic Update
     const tempId = Date.now();
@@ -53,30 +64,29 @@ export default function AddAppointmentDrawer({
       name,
       service,
       time,
-      // Add other fields if needed by the UI, but Appointment interface only needs these
+      price: Number(price), // Pass price to optimistic
     };
     onAdd(optimisticBooking);
-    setOpen(false); // Close immediately
-    // Reset form immediately
+
+    // Close & Reset immediately for snappy feel
+    setOpen(false);
     setName("");
     setPhone("");
     setNotes("");
     setImage(null);
     setTime("");
+    setPrice("");
     setService("Gel Manicure");
     setPaymentMethod("Cash");
     setDate(new Date().toLocaleDateString("en-CA"));
 
-    // 2. Perform background upload and insert
-    // We don't await this blocking user interaction, but we should handle errors
-    // Since we closed the drawer, we can't show alert easily unless we use a toast.
-    // For now, we will log to console or alert if critical.
+    toast.success("Appointment successfully created! ✨");
 
+    // 2. Background Upload & Insert
     try {
       setUploading(true);
       let imageUrl = null;
 
-      // Upload Image (if exists)
       if (image) {
         const fileExt = image.name.split(".").pop();
         const fileName = `${Date.now()}.${fileExt}`;
@@ -86,7 +96,7 @@ export default function AddAppointmentDrawer({
 
         if (uploadError) {
           console.error("Image upload failed:", uploadError);
-          // Continue without image or handle?
+          toast.error("Image upload failed, but appointment saved locally.");
         } else {
           const { data: publicUrlData } = supabase.storage
             .from("reference_images")
@@ -95,17 +105,18 @@ export default function AddAppointmentDrawer({
         }
       }
 
-      // GET USER ID
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
-        alert("You must be logged in to book.");
-        return; // Should maybe revert the optimistic update?
+        // This is a critical edge case if they somehow logged out.
+        // We can't revert the UI easily without more complex state management,
+        // but we can alert them.
+        toast.error("You must be logged in to sync to the server.");
+        return;
       }
 
-      // Insert Appointment
       const { error } = await supabase.from("appointments").insert([
         {
           client_name: name,
@@ -116,20 +127,20 @@ export default function AddAppointmentDrawer({
           notes: notes,
           reference_image: imageUrl,
           payment_method: paymentMethod,
+          price: price ? Number(price) : 0, // 🔥 Insert Price
           user_id: user.id,
         },
       ]);
 
       if (error) {
         console.error("Error saving:", error);
-        alert("Failed to save appointment. Please try again.");
-        // ideally remove the optimistic item here
+        toast.error("Failed to sync appointment to server.");
       } else {
-        // Success
-        console.log("Appointment saved! ✨");
+        console.log("Synced to DB successfully");
       }
     } catch (err) {
       console.error("Unexpected error:", err);
+      toast.error("An unexpected error occurred.");
     } finally {
       setUploading(false);
     }
@@ -238,11 +249,31 @@ export default function AddAppointmentDrawer({
 
                 <div>
                   <label className="text-xs uppercase tracking-widest text-gray-400 font-bold ml-1">
+                    Payment Amount
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={price ? formatRupiah(Number(price)) : ""}
+                      onChange={handlePriceChange}
+                      placeholder="Rp 0"
+                      className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors"
+                    />
+                    <Banknote
+                      className="absolute right-4 top-[55%] -translate-y-1/2 text-salon-accent pointer-events-none opacity-50"
+                      size={20}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-gray-400 font-bold ml-1">
                     Appointment Date
                   </label>
                   <div className="relative">
                     <input
                       type="date"
+                      min={new Date().toISOString().split("T")[0]} // 🔥 Disable past dates
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       onClick={(e) =>

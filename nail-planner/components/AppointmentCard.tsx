@@ -9,7 +9,7 @@ interface AppointmentProps {
   service: string;
   time: string;
   status?: "pending" | "completed" | "no-show";
-  onDelete: (id: string) => void;
+  onDelete: (id: string, clientName: string) => void;
   onClick?: () => void;
 }
 
@@ -64,7 +64,7 @@ export default function AppointmentCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(id);
+            onDelete(id, clientName);
           }}
           className="bg-red-50 p-3 rounded-full text-red-600 hover:bg-red-100 transition-colors"
         >

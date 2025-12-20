@@ -5,11 +5,14 @@ import AppointmentCard from "@/components/AppointmentCard";
 import CalendarView from "@/components/CalendarView";
 import DateScroller from "@/components/DateScroller";
 import ClientDetailsDrawer from "@/components/ClientDetailsDrawer"; // Import
+import DeleteConfirmationModal from "@/components/DeleteConfirmationModal";
 import { supabase } from "@/lib/supabase";
 import { m } from "framer-motion";
+import { toast } from "sonner";
 import { Sparkles, Plus, CalendarIcon, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatRupiah } from "@/lib/utils";
 
 export default function Home() {
   const router = useRouter();
@@ -21,7 +24,13 @@ export default function Home() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [allBusyDates, setAllBusyDates] = useState<Date[]>([]);
   const [busyDates, setBusyDates] = useState<Date[]>([]);
+  const [allTimeRevenue, setAllTimeRevenue] = useState(0); // All time revenue
   const [userName, setUserName] = useState("");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -55,8 +64,20 @@ export default function Home() {
     }
   };
 
+  const fetchAllTimeRevenue = async () => {
+    const { data, error } = await supabase.from("appointments").select("price");
+
+    if (error) {
+      console.error("Error fetching total revenue:", error.message);
+    } else if (data) {
+      const total = data.reduce((acc, curr) => acc + (curr.price || 0), 0);
+      setAllTimeRevenue(total);
+    }
+  };
+
   useEffect(() => {
     fetchBusyDates();
+    fetchAllTimeRevenue(); // Fetch global revenue
 
     // Check if user is logged in
     const checkUser = async () => {
@@ -100,6 +121,7 @@ export default function Home() {
         name: b.client_name,
         service: b.service_type,
         time: b.appointment_time,
+        price: b.price || 0, // 🔥 Map Price
       }));
       setBookings(formattedBookings);
     }
@@ -110,17 +132,19 @@ export default function Home() {
     setSelectedDate(date);
   };
 
-  const totalRevenue = bookings.reduce((acc, booking) => {
-    // Simple logic: mapping service names to prices
-    const prices: Record<string, number> = {
-      "Gel Manicure": 50,
-      "Acrylic Full Set": 90,
-      "Nail Art Add-on": 30,
-    };
-    return acc + (prices[booking.service] || 0);
+  const dailyRevenue = bookings.reduce((acc, booking) => {
+    return acc + (booking.price || 0);
   }, 0);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string, clientName: string) => {
+    setBookingToDelete({ id, name: clientName });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!bookingToDelete) return;
+    const { id } = bookingToDelete;
+
     // 1. Optimistic Update: Remove immediately
     const previousBookings = bookings;
     setBookings((prev) => prev.filter((b) => b.id !== id));
@@ -129,12 +153,16 @@ export default function Home() {
 
     if (error) {
       console.error("Error deleting:", error.message);
-      alert("Could not delete appointment");
+      toast.error("Could not delete appointment");
       // 2. Rollback if failed
       setBookings(previousBookings);
     } else {
+      toast.success("Client data deleted.");
+      // Refresh the gold dots on the calendar
+      toast.success("Client data deleted.");
       // Refresh the gold dots on the calendar
       fetchBusyDates();
+      fetchAllTimeRevenue();
     }
   };
 
@@ -142,6 +170,7 @@ export default function Home() {
   useEffect(() => {
     fetchBookings(selectedDate);
     fetchBusyDates(); // Initial fetch for the dots
+    fetchAllTimeRevenue();
 
     const channel = supabase
       .channel("schema-db-changes")
@@ -151,6 +180,7 @@ export default function Home() {
         () => {
           fetchBookings(selectedDate);
           fetchBusyDates(); // 🔥 This refreshes the dots automatically!
+          fetchAllTimeRevenue();
         }
       )
       .subscribe();
@@ -227,7 +257,7 @@ export default function Home() {
         <DateScroller onDateChange={handleDateChange} />
       </m.div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white/50 backdrop-blur-md p-4 rounded-3xl border border-salon-pink/30">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
             Total Clients
@@ -238,13 +268,19 @@ export default function Home() {
         </div>
         <div className="bg-salon-accent/10 p-4 rounded-3xl border border-salon-accent/20">
           <p className="text-[10px] uppercase tracking-widest text-salon-accent font-bold">
-            Est. Revenue
+            Total Revenue
           </p>
-          <p className="text-2xl font-serif italic text-salon-dark">
-            ${bookings.length * 50}{" "}
-            {/* Placeholder: Assuming $50 avg per service */}
+          <p className="text-xl font-serif italic text-salon-dark truncate">
+            {formatRupiah(allTimeRevenue)}
           </p>
         </div>
+      </div>
+
+      {/* Daily Summary Line */}
+      <div className="flex justify-between items-center mb-4 px-2 opacity-60">
+        <p className="text-xs font-bold text-salon-dark uppercase tracking-widest">
+          {bookings.length} Clients • {formatRupiah(dailyRevenue)}
+        </p>
       </div>
       {/* 2. APPOINTMENT LIST AREA */}
       <div className="mt-8 space-y-4">
@@ -285,6 +321,14 @@ export default function Home() {
         )}
       </div>
       <AddAppointmentDrawer onAdd={addBooking} />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        clientName={bookingToDelete?.name || ""}
+      />
 
       {/* Client Details Drawer */}
       {selectedBooking && (
