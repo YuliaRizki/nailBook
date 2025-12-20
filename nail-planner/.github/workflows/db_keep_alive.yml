@@ -1,0 +1,17 @@
+name: Keep Supabase Awake
+
+# Runs at 00:00 every day to prevent project pausing on Free Tier
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Project
+        run: |
+          # Replace with your actual project URL if not using secrets
+          # Example: https://your-project-ref.supabase.co
+          curl -I ${{ secrets.SUPABASE_PROJECT_URL }}

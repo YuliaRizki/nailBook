@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Clock, MessageCircle, Trash2 } from "lucide-react";
 
 interface AppointmentProps {
@@ -29,7 +29,7 @@ export default function AppointmentCard({
   };
 
   return (
-    <motion.div
+    <m.div
       whileHover={{ scale: 1.02 }}
       onClick={onClick}
       className="relative bg-white p-5 rounded-3xl border border-salon-pink/50 shadow-sm flex justify-between items-center group mb-4 cursor-pointer"
@@ -71,6 +71,6 @@ export default function AppointmentCard({
           <Trash2 size={20} />
         </button>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

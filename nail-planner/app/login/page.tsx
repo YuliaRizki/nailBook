@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence, Transition } from "framer-motion";
+import { m, AnimatePresence, Transition } from "framer-motion";
 import {
   ArrowLeftRight,
   UserPlus,
@@ -151,7 +151,7 @@ export default function LoginPage() {
       {/* 🌤️ RICH ATMOSPHERIC BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Dynamic gradient orbs */}
-        <motion.div
+        <m.div
           animate={{
             x: [0, 40, 0],
             y: [0, -30, 0],
@@ -165,7 +165,7 @@ export default function LoginPage() {
               : "radial-gradient(circle, rgba(248, 227, 227, 0.4) 0%, rgba(249, 246, 242, 0) 70%)",
           }}
         />
-        <motion.div
+        <m.div
           animate={{
             x: [0, -35, 0],
             y: [0, 40, 0],
@@ -193,14 +193,14 @@ export default function LoginPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key="auth-container"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           className="relative w-full h-screen md:h-[600px] md:w-[1000px] flex flex-col md:block overflow-hidden z-10 bg-white/40 md:backdrop-blur-xl md:rounded-[40px] shadow-2xl border-0 md:border border-white/60"
         >
           {/* 🎨 SLIDING ACCENT PANEL */}
-          <motion.div
+          <m.div
             // Desktop: Slide X. Mobile: Fixed Top or Slide Y?
             // Better Mobile UX: Keep it as a top banner that changes color
             animate={
@@ -236,7 +236,7 @@ export default function LoginPage() {
             }
           >
             {/* Animated glow */}
-            <motion.div
+            <m.div
               animate={{ opacity: [0.3, 0.6, 0.3] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               className="absolute w-64 h-64 rounded-full blur-[80px]"
@@ -249,7 +249,7 @@ export default function LoginPage() {
 
             <div className="relative z-10 flex flex-col items-center">
               {/* Icon */}
-              <motion.div
+              <m.div
                 key={isLoginView ? "login-icon" : "reg-icon"}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{
@@ -279,7 +279,7 @@ export default function LoginPage() {
                     strokeWidth={1.5}
                   />
                 )}
-              </motion.div>
+              </m.div>
 
               <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif italic tracking-tight mb-2 md:mb-4 text-salon-dark">
                 {isLoginView ? "Member Access" : "Join the List"}
@@ -290,7 +290,7 @@ export default function LoginPage() {
                   : "Become a VIP member to track your history and book much faster."}
               </p>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* 📝 FORMS CONTAINER */}
           {/* On Mobile: Flex column fill rest. On Desktop: Absolute inset */}
@@ -303,7 +303,7 @@ export default function LoginPage() {
                   : "opacity-0 md:opacity-100 z-0"
               } absolute inset-0 md:relative`}
             >
-              <motion.div
+              <m.div
                 animate={{
                   opacity: !isLoginView ? 1 : 0,
                   x: isMobile ? (!isLoginView ? 0 : -50) : 0,
@@ -323,7 +323,7 @@ export default function LoginPage() {
                 {/* Error/Success Messages */}
                 <AnimatePresence>
                   {errorMsg && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
@@ -331,10 +331,10 @@ export default function LoginPage() {
                     >
                       <AlertCircle size={14} />
                       {errorMsg}
-                    </motion.div>
+                    </m.div>
                   )}
                   {successMsg && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
@@ -342,7 +342,7 @@ export default function LoginPage() {
                     >
                       <CheckCircle2 size={14} />
                       {successMsg}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
 
@@ -374,7 +374,7 @@ export default function LoginPage() {
                 >
                   {isLoading ? "Creating..." : "Create Account"}
                 </button>
-              </motion.div>
+              </m.div>
             </div>
 
             {/* LOGIN FORM */}
@@ -388,7 +388,7 @@ export default function LoginPage() {
                 "md:order-last" /* Desktop trick to put it on right */
               }`}
             >
-              <motion.div
+              <m.div
                 animate={{
                   opacity: isLoginView ? 1 : 0,
                   x: isMobile ? (isLoginView ? 0 : 50) : 0,
@@ -408,7 +408,7 @@ export default function LoginPage() {
                 {/* Error/Success Messages */}
                 <AnimatePresence>
                   {errorMsg && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
@@ -418,10 +418,10 @@ export default function LoginPage() {
                         <AlertCircle size={14} />
                         <span>{errorMsg}</span>
                       </div>
-                    </motion.div>
+                    </m.div>
                   )}
                   {successMsg && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
@@ -429,7 +429,7 @@ export default function LoginPage() {
                     >
                       <CheckCircle2 size={14} />
                       {successMsg}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
 
@@ -455,12 +455,12 @@ export default function LoginPage() {
                 >
                   {isLoading ? "Verifying..." : "Login Securely"}
                 </button>
-              </motion.div>
+              </m.div>
             </div>
           </div>
 
           {/* 🔄 MODE SWITCHER */}
-          <motion.button
+          <m.button
             animate={
               isMobile
                 ? {
@@ -484,8 +484,8 @@ export default function LoginPage() {
             style={isMobile ? { position: "absolute" } : {}}
           >
             <ArrowLeftRight size={isMobile ? 18 : 20} strokeWidth={2.5} />
-          </motion.button>
-        </motion.div>
+          </m.button>
+        </m.div>
       </AnimatePresence>
     </div>
   );

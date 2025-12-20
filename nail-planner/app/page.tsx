@@ -6,7 +6,7 @@ import CalendarView from "@/components/CalendarView";
 import DateScroller from "@/components/DateScroller";
 import ClientDetailsDrawer from "@/components/ClientDetailsDrawer"; // Import
 import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Sparkles, Plus, CalendarIcon, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -29,9 +29,19 @@ export default function Home() {
   };
 
   const fetchBusyDates = async () => {
+    // Optimization: Only fetch busy dates for relevant range (e.g., +/- 1 year)
+    // This prevents downloading thousands of past appointments
+    const today = new Date();
+    const startObj = new Date(today);
+    startObj.setFullYear(today.getFullYear() - 1);
+    const endObj = new Date(today);
+    endObj.setFullYear(today.getFullYear() + 1);
+
     const { data, error } = await supabase
       .from("appointments")
-      .select("appointment_date");
+      .select("appointment_date")
+      .gte("appointment_date", startObj.toISOString().split("T")[0])
+      .lte("appointment_date", endObj.toISOString().split("T")[0]);
 
     if (error) {
       console.error("Error fetching busy dates:", error.message);
@@ -111,14 +121,18 @@ export default function Home() {
   }, 0);
 
   const handleDelete = async (id: string) => {
+    // 1. Optimistic Update: Remove immediately
+    const previousBookings = bookings;
+    setBookings((prev) => prev.filter((b) => b.id !== id));
+
     const { error } = await supabase.from("appointments").delete().eq("id", id);
 
     if (error) {
       console.error("Error deleting:", error.message);
       alert("Could not delete appointment");
+      // 2. Rollback if failed
+      setBookings(previousBookings);
     } else {
-      // Update the local state so the card disappears immediately
-      setBookings((prev) => prev.filter((b) => b.id !== id));
       // Refresh the gold dots on the calendar
       fetchBusyDates();
     }
@@ -152,7 +166,7 @@ export default function Home() {
   return (
     <main className="min-h-screen p-6 max-w-md mx-auto bg-salon-nude">
       {/* Header Section */}
-      <motion.header
+      <m.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex justify-between items-center mb-10"
@@ -180,7 +194,7 @@ export default function Home() {
             <LogOut className="text-salon-dark w-5 h-5" />
           </button>
         </div>
-      </motion.header>
+      </m.header>
       <div className="flex justify-between items-center mb-4">
         <button
           onClick={() => setIsCalendarOpen(!isCalendarOpen)}
@@ -205,13 +219,13 @@ export default function Home() {
       />
 
       {/* 1. PLACE THE SCROLLER HERE */}
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
         <DateScroller onDateChange={handleDateChange} />
-      </motion.div>
+      </m.div>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-white/50 backdrop-blur-md p-4 rounded-3xl border border-salon-pink/30">
@@ -238,7 +252,7 @@ export default function Home() {
           <p className="text-center text-gray-400 py-10">Loading your day...</p>
         ) : bookings.length > 0 ? (
           bookings.map((booking, index) => (
-            <motion.div
+            <m.div
               key={booking.id}
               whileHover={{ scale: 1.02, y: -5 }}
               whileTap={{ scale: 0.98 }}
@@ -257,17 +271,17 @@ export default function Home() {
                   setIsDetailsOpen(true);
                 }}
               />
-            </motion.div>
+            </m.div>
           ))
         ) : (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center py-20 text-gray-400"
           >
             <div className="bg-white p-4 rounded-full mb-4 shadow-sm">✨</div>
             <p className="italic text-sm">No appointments for today yet</p>
-          </motion.div>
+          </m.div>
         )}
       </div>
       <AddAppointmentDrawer onAdd={addBooking} />

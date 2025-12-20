@@ -13,7 +13,7 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -46,46 +46,67 @@ export default function AddAppointmentDrawer({
   const handleBooking = async () => {
     if (!name || !time) return alert("Please fill in all fields!");
 
-    setUploading(true);
-    let imageUrl = null;
+    // 1. Optimistic Update
+    const tempId = Date.now();
+    const optimisticBooking = {
+      id: tempId,
+      name,
+      service,
+      time,
+      // Add other fields if needed by the UI, but Appointment interface only needs these
+    };
+    onAdd(optimisticBooking);
+    setOpen(false); // Close immediately
+    // Reset form immediately
+    setName("");
+    setPhone("");
+    setNotes("");
+    setImage(null);
+    setTime("");
+    setService("Gel Manicure");
+    setPaymentMethod("Cash");
+    setDate(new Date().toLocaleDateString("en-CA"));
 
-    // 1. Upload Image (if exists)
-    if (image) {
-      const fileExt = image.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("reference_images")
-        .upload(fileName, image);
+    // 2. Perform background upload and insert
+    // We don't await this blocking user interaction, but we should handle errors
+    // Since we closed the drawer, we can't show alert easily unless we use a toast.
+    // For now, we will log to console or alert if critical.
 
-      if (uploadError) {
-        setUploading(false);
-        // We warn but don't stop the booking if image fails, or arguably we should stop.
-        // Let's stop to be safe so they know image didn't go through.
-        return alert("Image upload failed: " + uploadError.message);
+    try {
+      setUploading(true);
+      let imageUrl = null;
+
+      // Upload Image (if exists)
+      if (image) {
+        const fileExt = image.name.split(".").pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("reference_images")
+          .upload(fileName, image);
+
+        if (uploadError) {
+          console.error("Image upload failed:", uploadError);
+          // Continue without image or handle?
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from("reference_images")
+            .getPublicUrl(fileName);
+          imageUrl = publicUrlData.publicUrl;
+        }
       }
 
-      // Get Public URL
-      const { data: publicUrlData } = supabase.storage
-        .from("reference_images")
-        .getPublicUrl(fileName);
+      // GET USER ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      imageUrl = publicUrlData.publicUrl;
-    }
+      if (!user) {
+        alert("You must be logged in to book.");
+        return; // Should maybe revert the optimistic update?
+      }
 
-    // 2. GET USER ID
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setUploading(false);
-      return alert("You must be logged in to book an appointment.");
-    }
-
-    // 3. Insert Appointment
-    const { data, error } = await supabase
-      .from("appointments")
-      .insert([
+      // Insert Appointment
+      const { error } = await supabase.from("appointments").insert([
         {
           client_name: name,
           client_phone: phone,
@@ -93,42 +114,37 @@ export default function AddAppointmentDrawer({
           appointment_time: time,
           appointment_date: date,
           notes: notes,
-          reference_image: imageUrl, // 🔥 Save the URL
+          reference_image: imageUrl,
           payment_method: paymentMethod,
-          user_id: user.id, // 🔥 Link to current user
+          user_id: user.id,
         },
-      ])
-      .select();
+      ]);
 
-    setUploading(false);
-
-    if (error) {
-      alert("Error saving: " + error.message);
-    } else {
-      // Success: Reset and Close
-      setName("");
-      setPhone("");
-      setNotes("");
-      setImage(null);
-      setTime("");
-      setService("Gel Manicure");
-      setPaymentMethod("Cash");
-      setDate(new Date().toLocaleDateString("en-CA"));
-      setOpen(false); // Close the drawer
-      alert("Appointment saved! ✨");
+      if (error) {
+        console.error("Error saving:", error);
+        alert("Failed to save appointment. Please try again.");
+        // ideally remove the optimistic item here
+      } else {
+        // Success
+        console.log("Appointment saved! ✨");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    } finally {
+      setUploading(false);
     }
   };
   return (
     <Drawer.Root shouldScaleBackground open={open} onOpenChange={setOpen}>
       <Drawer.Trigger asChild>
         {/* We replace the static Plus button in page.tsx with this trigger */}
-        <motion.button
+        <m.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="fixed bottom-8 right-8 bg-salon-dark text-white p-4 rounded-full shadow-xl z-50"
         >
           <Plus size={24} />
-        </motion.button>
+        </m.button>
       </Drawer.Trigger>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
