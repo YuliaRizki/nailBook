@@ -193,10 +193,8 @@ export default function LoginPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        <m.div
+        <div
           key="auth-container"
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
           className="relative w-full h-screen md:h-[600px] md:w-[1000px] flex flex-col md:block overflow-hidden z-10 bg-white/40 md:backdrop-blur-xl md:rounded-[40px] shadow-2xl border-0 md:border border-white/60"
         >
           {/* 🎨 SLIDING ACCENT PANEL */}
@@ -485,7 +483,7 @@ export default function LoginPage() {
           >
             <ArrowLeftRight size={isMobile ? 18 : 20} strokeWidth={2.5} />
           </m.button>
-        </m.div>
+        </div>
       </AnimatePresence>
     </div>
   );
