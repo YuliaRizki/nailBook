@@ -32,6 +32,9 @@ export default function Home() {
     name: string;
   } | null>(null);
 
+  // 🔒 Auth Check State
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -76,27 +79,29 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchBusyDates();
-    fetchAllTimeRevenue(); // Fetch global revenue
-
-    // Check if user is logged in
-    const checkUser = async () => {
+    const init = async () => {
+      // 1. Check User First
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
         router.push("/login");
-      } else {
-        // Try to get explicit full_name, or fallback to email part, or generic
-        const name =
-          user.user_metadata?.full_name ||
-          user.email?.split("@")[0] ||
-          "Artist";
-        setUserName(name);
+        return; // Stop execution if redirecting
       }
+
+      // 2. Set User & Allow Render
+      const name =
+        user.user_metadata?.full_name || user.email?.split("@")[0] || "Artist";
+      setUserName(name);
+      setIsAuthChecking(false);
+
+      // 3. Fetch Data
+      fetchBusyDates();
+      fetchAllTimeRevenue();
     };
-    checkUser();
+
+    init();
   }, []);
 
   // 1. Create a function to fetch data
@@ -159,8 +164,6 @@ export default function Home() {
     } else {
       toast.success("Client data deleted.");
       // Refresh the gold dots on the calendar
-      toast.success("Client data deleted.");
-      // Refresh the gold dots on the calendar
       fetchBusyDates();
       fetchAllTimeRevenue();
     }
@@ -193,6 +196,12 @@ export default function Home() {
   const addBooking = (newBooking: any) => {
     setBookings((prev) => [...prev, newBooking]);
   };
+
+  // 🛑 Block render until auth is confirmed
+  if (isAuthChecking) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen p-6 max-w-md mx-auto bg-salon-nude">
       {/* Header Section */}
