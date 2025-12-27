@@ -4,7 +4,7 @@ import { Drawer } from 'vaul'
 import { formatRupiah } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Loader2, TrendingUp, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Wallet } from 'lucide-react'
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 
 interface MonthlyRevenueDrawerProps {
@@ -15,57 +15,107 @@ interface MonthlyRevenueDrawerProps {
 export default function MonthlyRevenueDrawer({ isOpen, onClose }: MonthlyRevenueDrawerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [loading, setLoading] = useState(false)
-  const [revenueData, setRevenueData] = useState<{ date: string; total: number; count: number }[]>(
-    [],
-  )
+  const [revenueData, setRevenueData] = useState<
+    { date: string; total: number; count: number; manual: number }[]
+  >([])
   const [totalRevenue, setTotalRevenue] = useState(0)
+  const [allTimeRevenue, setAllTimeRevenue] = useState(0)
+
+  // Fetch All Time Revenue (Lifetime)
+  const fetchOverallRevenue = async () => {
+    // 1. All Appointments
+    const { data: apptData, error: apptError } = await supabase.from('appointments').select('price')
+
+    // 2. All Manual Income
+    const { data: incomeData, error: incomeError } = await supabase
+      .from('income_records')
+      .select('amount')
+
+    let total = 0
+    if (apptData) total += apptData.reduce((acc, curr) => acc + (curr.price || 0), 0)
+    if (incomeData) total += incomeData.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+
+    setAllTimeRevenue(total)
+  }
 
   const fetchMonthlyData = async (date: Date) => {
     setLoading(true)
-    const start = startOfMonth(date).toISOString()
-    const end = endOfMonth(date).toISOString()
+    const start = format(startOfMonth(date), 'yyyy-MM-dd')
+    const end = format(endOfMonth(date), 'yyyy-MM-dd')
 
-    const { data, error } = await supabase
+    // 1. Fetch Appointments
+    const { data: apptData, error: apptError } = await supabase
       .from('appointments')
       .select('appointment_date, price')
       .gte('appointment_date', start)
       .lte('appointment_date', end)
       .order('appointment_date', { ascending: true })
 
-    if (error) {
-      console.error('Error fetching monthly revenue:', error)
-    } else if (data) {
-      // Aggregate data by date
-      const aggregated: Record<string, { total: number; count: number }> = {}
-      let total = 0
+    // 2. Fetch Manual Income
+    const { data: incomeData, error: incomeError } = await supabase
+      .from('income_records')
+      .select('date, amount')
+      .gte('date', start)
+      .lte('date', end)
 
-      data.forEach((appt) => {
+    if (apptError) console.error('Error fetching appointments:', apptError)
+    if (incomeError) {
+      // Gracefully fail if table doesn't exist
+      // if (incomeError && incomeError.code !== '42P01') console.error('Error fetching income:', incomeError)
+    }
+
+    // Aggregate data
+    const aggregated: Record<string, { total: number; count: number; manual: number }> = {}
+    let total = 0
+
+    // Process Appointments
+    if (apptData) {
+      apptData.forEach((appt) => {
         const dateKey = appt.appointment_date
         const price = appt.price || 0
 
         if (!aggregated[dateKey]) {
-          aggregated[dateKey] = { total: 0, count: 0 }
+          aggregated[dateKey] = { total: 0, count: 0, manual: 0 }
         }
         aggregated[dateKey].total += price
         aggregated[dateKey].count += 1
         total += price
       })
+    }
 
-      const sortedData = Object.entries(aggregated).map(([date, stats]) => ({
+    // Process Manual Income
+    if (incomeData) {
+      incomeData.forEach((inc) => {
+        const dateKey = inc.date
+        const amount = inc.amount || 0
+
+        if (!aggregated[dateKey]) {
+          aggregated[dateKey] = { total: 0, count: 0, manual: 0 }
+        }
+        aggregated[dateKey].total += amount
+        aggregated[dateKey].manual += amount
+        total += amount
+      })
+    }
+
+    const sortedData = Object.entries(aggregated)
+      .map(([date, stats]) => ({
         date,
         total: stats.total,
         count: stats.count,
+        manual: stats.manual,
       }))
+      .sort((a, b) => a.date.localeCompare(b.date))
 
-      setRevenueData(sortedData)
-      setTotalRevenue(total)
-    }
+    setRevenueData(sortedData)
+    setTotalRevenue(total)
     setLoading(false)
   }
 
   useEffect(() => {
     if (isOpen) {
       fetchMonthlyData(currentMonth)
+      fetchOverallRevenue()
     }
   }, [isOpen, currentMonth])
 
@@ -105,15 +155,37 @@ export default function MonthlyRevenueDrawer({ isOpen, onClose }: MonthlyRevenue
               </div>
 
               {/* Total Card */}
-              <div className="bg-salon-accent text-white p-6 rounded-3xl shadow-lg shadow-salon-accent/20 mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-20">
-                  <TrendingUp size={48} />
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {/* Monthly Card */}
+                <div className="bg-salon-accent text-white p-5 rounded-3xl shadow-lg shadow-salon-accent/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-3 opacity-20">
+                    <TrendingUp size={32} />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">
+                    This Month
+                  </p>
+                  <div className="text-2xl font-serif italic truncate">
+                    {loading ? (
+                      <Loader2 className="animate-spin w-6 h-6" />
+                    ) : (
+                      formatRupiah(totalRevenue)
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">
-                  Total Earned
-                </p>
-                <div className="text-4xl font-serif italic">
-                  {loading ? <Loader2 className="animate-spin" /> : formatRupiah(totalRevenue)}
+
+                {/* Lifetime Card */}
+                {/* Lifetime Card */}
+                <div className="bg-salon-pink-light text-white p-5 rounded-3xl shadow-lg shadow-gray-200 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-3 opacity-10">
+                    <Wallet size={32} />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">
+                    Total Revenue
+                  </p>
+                  <div className="text-xl font-serif italic truncate">
+                    {formatRupiah(allTimeRevenue)}
+                  </div>
                 </div>
               </div>
 
@@ -142,7 +214,10 @@ export default function MonthlyRevenueDrawer({ isOpen, onClose }: MonthlyRevenue
                             {format(parseISO(day.date), 'EEE, d MMM')}
                           </p>
                           <p className="text-xs text-gray-400">
-                            {day.count} {day.count === 1 ? 'client' : 'clients'}
+                            {day.count > 0 &&
+                              `${day.count} ${day.count === 1 ? 'client' : 'clients'}`}
+                            {day.count > 0 && day.manual > 0 && ' • '}
+                            {day.manual > 0 && 'Extra Income'}
                           </p>
                         </div>
                       </div>

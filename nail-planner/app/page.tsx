@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import { formatRupiah } from '@/lib/utils'
 import MonthlyRevenueDrawer from '@/components/MonthlyRevenueDrawer'
 import { TrendingUp } from 'lucide-react'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export default function Home() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function Home() {
   const [allBusyDates, setAllBusyDates] = useState<Date[]>([])
   const [busyDates, setBusyDates] = useState<Date[]>([])
   const [monthlyRevenue, setMonthlyRevenue] = useState(0)
+  const [monthlyClientCount, setMonthlyClientCount] = useState(0)
   const [isRevenueDrawerOpen, setIsRevenueDrawerOpen] = useState(false)
   const [userName, setUserName] = useState('')
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -71,10 +73,10 @@ export default function Home() {
   }
 
   const fetchMonthlyRevenue = async () => {
-    // Get start/end of current month
+    // Get start/end of current month in Local Date String (YYYY-MM-DD)
     const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString()
+    const start = format(startOfMonth(now), 'yyyy-MM-dd')
+    const end = format(endOfMonth(now), 'yyyy-MM-dd')
 
     const { data, error } = await supabase
       .from('appointments')
@@ -87,6 +89,7 @@ export default function Home() {
     } else if (data) {
       const total = data.reduce((acc, curr) => acc + (curr.price || 0), 0)
       setMonthlyRevenue(total)
+      setMonthlyClientCount(data.length) // 🔥 Capture count
     }
   }
 
@@ -284,9 +287,9 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white/50 backdrop-blur-md p-4 rounded-3xl border border-salon-pink/30">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-            Total Clients
+            Monthly Clients
           </p>
-          <p className="text-2xl font-serif italic text-salon-dark">{bookings.length}</p>
+          <p className="text-2xl font-serif italic text-salon-dark">{monthlyClientCount}</p>
         </div>
         <div
           onClick={() => setIsRevenueDrawerOpen(true)}
