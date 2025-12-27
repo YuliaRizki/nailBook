@@ -361,9 +361,6 @@ export default function LoginPage() {
       </div>
 
       {/* Footer Text */}
-      <div className="absolute bottom-4 text-center w-full text-[10px] text-stone-400 uppercase tracking-widest pointer-events-none">
-        Secure Access • NailBook v1.0
-      </div>
     </m.div>
   );
 }
