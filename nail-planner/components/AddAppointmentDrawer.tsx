@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { Drawer } from "vaul";
-import { toast } from "sonner";
+import { Drawer } from 'vaul'
+import { toast } from 'sonner'
 import {
   Plus,
   X,
@@ -14,110 +14,112 @@ import {
   Image as ImageIcon,
   Loader2,
   Banknote,
-} from "lucide-react";
-import { formatRupiah } from "@/lib/utils";
-import { m } from "framer-motion";
-import { useState, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+} from 'lucide-react'
+import { formatRupiah } from '@/lib/utils'
+import { m } from 'framer-motion'
+import { useState, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface Appointment {
-  id: number;
-  name: string;
-  service: string;
-  time: string;
+  id: number
+  name: string
+  service: string
+  time: string
 }
 
 interface AddAppointmentDrawerProps {
-  onAdd: (appointment: Appointment) => void;
+  onAdd: (appointment: Appointment) => void
 }
 
-export default function AddAppointmentDrawer({
-  onAdd,
-}: AddAppointmentDrawerProps) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [price, setPrice] = useState(""); // Raw number string
-  const [service, setService] = useState("");
-  const [time, setTime] = useState("");
-  const [date, setDate] = useState(new Date().toLocaleDateString("en-CA")); // 🔥 Correct local date
-  const [open, setOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function AddAppointmentDrawer({ onAdd }: AddAppointmentDrawerProps) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [notes, setNotes] = useState('')
+  const [image, setImage] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('Cash')
+  const [price, setPrice] = useState('') // Raw number string
+  const [service, setService] = useState('')
+  const [time, setTime] = useState('')
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA')) // 🔥 Correct local date
+  const [open, setOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Helper to format input display
+  // Helper functions
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove non-digit characters
-    const numericValue = e.target.value.replace(/\D/g, "");
-    setPrice(numericValue);
-  };
+    const numericValue = e.target.value.replace(/\D/g, '')
+    setPrice(numericValue)
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = e.target.value.replace(/\D/g, '')
+    setPhone(numericValue)
+  }
 
   const handleBooking = async () => {
-    if (!name || !time) return toast.error("Please fill in all fields!");
+    if (!name || !time) return toast.error('Please fill in all fields!')
 
     // 1. Optimistic Update
-    const tempId = Date.now();
+    const tempId = Date.now()
     const optimisticBooking = {
       id: tempId,
       name,
       service,
       time,
       price: Number(price), // Pass price to optimistic
-    };
-    onAdd(optimisticBooking);
+    }
+    onAdd(optimisticBooking)
 
     // Close & Reset immediately for snappy feel
-    setOpen(false);
-    setName("");
-    setPhone("");
-    setNotes("");
-    setImage(null);
-    setTime("");
-    setPrice("");
-    setService("Gel Manicure");
-    setPaymentMethod("Cash");
-    setDate(new Date().toLocaleDateString("en-CA"));
+    setOpen(false)
+    setName('')
+    setPhone('')
+    setNotes('')
+    setImage(null)
+    setTime('')
+    setPrice('')
+    setService('Gel Manicure')
+    setPaymentMethod('Cash')
+    setDate(new Date().toLocaleDateString('en-CA'))
 
-    toast.success("Appointment successfully created! ✨");
+    toast.success('Appointment successfully created! ✨')
 
     // 2. Background Upload & Insert
     try {
-      setUploading(true);
-      let imageUrl = null;
+      setUploading(true)
+      let imageUrl = null
 
       if (image) {
-        const fileExt = image.name.split(".").pop();
-        const fileName = `${Date.now()}.${fileExt}`;
+        const fileExt = image.name.split('.').pop()
+        const fileName = `${Date.now()}.${fileExt}`
         const { error: uploadError } = await supabase.storage
-          .from("reference_images")
-          .upload(fileName, image);
+          .from('reference_images')
+          .upload(fileName, image)
 
         if (uploadError) {
-          console.error("Image upload failed:", uploadError);
-          toast.error("Image upload failed, but appointment saved locally.");
+          console.error('Image upload failed:', uploadError)
+          toast.error('Image upload failed, but appointment saved locally.')
         } else {
           const { data: publicUrlData } = supabase.storage
-            .from("reference_images")
-            .getPublicUrl(fileName);
-          imageUrl = publicUrlData.publicUrl;
+            .from('reference_images')
+            .getPublicUrl(fileName)
+          imageUrl = publicUrlData.publicUrl
         }
       }
 
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getUser()
 
       if (!user) {
         // This is a critical edge case if they somehow logged out.
         // We can't revert the UI easily without more complex state management,
         // but we can alert them.
-        toast.error("You must be logged in to sync to the server.");
-        return;
+        toast.error('You must be logged in to sync to the server.')
+        return
       }
 
-      const { error } = await supabase.from("appointments").insert([
+      const { error } = await supabase.from('appointments').insert([
         {
           client_name: name,
           client_phone: phone,
@@ -130,21 +132,21 @@ export default function AddAppointmentDrawer({
           price: price ? Number(price) : 0, // 🔥 Insert Price
           user_id: user.id,
         },
-      ]);
+      ])
 
       if (error) {
-        console.error("Error saving:", error);
-        toast.error("Failed to sync appointment to server.");
+        console.error('Error saving:', error)
+        toast.error('Failed to sync appointment to server.')
       } else {
-        console.log("Synced to DB successfully");
+        console.log('Synced to DB successfully')
       }
     } catch (err) {
-      console.error("Unexpected error:", err);
-      toast.error("An unexpected error occurred.");
+      console.error('Unexpected error:', err)
+      toast.error('An unexpected error occurred.')
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
   return (
     <Drawer.Root shouldScaleBackground open={open} onOpenChange={setOpen}>
       <Drawer.Trigger asChild>
@@ -195,7 +197,7 @@ export default function AddAppointmentDrawer({
                   <div className="relative">
                     <input
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={handlePhoneChange}
                       type="tel"
                       placeholder="e.g. +1 234 567 890"
                       className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors"
@@ -231,14 +233,14 @@ export default function AddAppointmentDrawer({
                     Payment Method
                   </label>
                   <div className="grid grid-cols-3 gap-3 mt-2">
-                    {["Cash", "QRIS", "Transfer"].map((method) => (
+                    {['Cash', 'QRIS', 'Transfer'].map((method) => (
                       <button
                         key={method}
                         onClick={() => setPaymentMethod(method)}
                         className={`p-3 rounded-xl border text-sm font-bold transition-all ${
                           paymentMethod === method
-                            ? "bg-salon-accent text-white border-salon-accent shadow-lg shadow-salon-accent/20"
-                            : "bg-salon-nude/30 border-salon-pink/30 text-salon-dark hover:bg-salon-pink/20"
+                            ? 'bg-salon-accent text-white border-salon-accent shadow-lg shadow-salon-accent/20'
+                            : 'bg-salon-nude/30 border-salon-pink/30 text-salon-dark hover:bg-salon-pink/20'
                         }`}
                       >
                         {method}
@@ -254,7 +256,7 @@ export default function AddAppointmentDrawer({
                   <div className="relative">
                     <input
                       type="text"
-                      value={price ? formatRupiah(Number(price)) : ""}
+                      value={price ? formatRupiah(Number(price)) : ''}
                       onChange={handlePriceChange}
                       placeholder="Rp 0"
                       className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors"
@@ -273,12 +275,10 @@ export default function AddAppointmentDrawer({
                   <div className="relative">
                     <input
                       type="date"
-                      min={new Date().toISOString().split("T")[0]} // 🔥 Disable past dates
+                      min={new Date().toISOString().split('T')[0]} // 🔥 Disable past dates
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      onClick={(e) =>
-                        (e.target as HTMLInputElement).showPicker?.()
-                      }
+                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                       className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors cursor-pointer"
                     />
                     <Calendar
@@ -298,9 +298,7 @@ export default function AddAppointmentDrawer({
                         type="time"
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        onClick={(e) =>
-                          (e.target as HTMLInputElement).showPicker?.()
-                        }
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                         className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none cursor-pointer"
                       />
                       <Clock
@@ -341,9 +339,7 @@ export default function AddAppointmentDrawer({
                         className="flex items-center gap-2 text-xs font-bold text-salon-accent hover:text-salon-dark transition-colors bg-white/50 px-3 py-1.5 rounded-lg border border-salon-accent/20"
                       >
                         {image ? (
-                          <span className="truncate max-w-[150px]">
-                            {image.name}
-                          </span>
+                          <span className="truncate max-w-[150px]">{image.name}</span>
                         ) : (
                           <>
                             <ImageIcon size={16} />
@@ -365,7 +361,7 @@ export default function AddAppointmentDrawer({
                       <Loader2 className="animate-spin" /> Uploading...
                     </>
                   ) : (
-                    "Confirm Appointment"
+                    'Confirm Appointment'
                   )}
                 </button>
               </div>
@@ -374,5 +370,5 @@ export default function AddAppointmentDrawer({
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>
-  );
+  )
 }
