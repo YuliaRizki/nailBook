@@ -359,8 +359,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-
-      {/* Footer Text */}
     </m.div>
   );
 }
