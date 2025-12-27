@@ -41,7 +41,7 @@ export default function AddAppointmentDrawer({
   const [uploading, setUploading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [price, setPrice] = useState(""); // Raw number string
-  const [service, setService] = useState("Gel Manicure");
+  const [service, setService] = useState("");
   const [time, setTime] = useState("");
   const [date, setDate] = useState(new Date().toLocaleDateString("en-CA")); // 🔥 Correct local date
   const [open, setOpen] = useState(false);
