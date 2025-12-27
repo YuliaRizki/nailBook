@@ -2,9 +2,17 @@
 
 import { Drawer } from 'vaul'
 import { formatRupiah } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Loader2, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Wallet } from 'lucide-react'
+import {
+  Loader2,
+  TrendingUp,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Wallet,
+  ChevronDown,
+} from 'lucide-react'
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 
 interface MonthlyRevenueDrawerProps {
@@ -20,6 +28,15 @@ export default function MonthlyRevenueDrawer({ isOpen, onClose }: MonthlyRevenue
   >([])
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [allTimeRevenue, setAllTimeRevenue] = useState(0)
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
+
+  // Selection state for the custom picker (starts with visible month)
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear())
+
+  // Sync picker year when currentMonth changes externally (e.g. via arrows)
+  useEffect(() => {
+    setPickerYear(currentMonth.getFullYear())
+  }, [currentMonth])
 
   // Fetch All Time Revenue (Lifetime)
   const fetchOverallRevenue = async () => {
@@ -143,9 +160,91 @@ export default function MonthlyRevenueDrawer({ isOpen, onClose }: MonthlyRevenue
                 >
                   <ChevronLeft size={20} className="text-gray-500" />
                 </button>
-                <span className="text-sm font-bold uppercase tracking-widest text-salon-accent">
-                  {format(currentMonth, 'MMMM yyyy')}
-                </span>
+                <div className="relative">
+                  <div
+                    className="flex items-center gap-2 cursor-pointer group px-4 py-2 rounded-full hover:bg-salon-pink/20 transition-all"
+                    onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
+                  >
+                    <span className="text-sm font-bold uppercase tracking-widest text-salon-accent group-hover:text-salon-dark transition-colors">
+                      {format(currentMonth, 'MMMM yyyy')}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-salon-accent transition-transform duration-300 ${
+                        isMonthPickerOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </div>
+
+                  {/* Custom Month Picker Dropdown */}
+                  {isMonthPickerOpen && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-gray-200 border border-salon-pink/20 z-20 p-4">
+                      {/* Year Selector */}
+                      <div className="flex justify-between items-center mb-4 px-2">
+                        <button
+                          onClick={() => setPickerYear((prev) => prev - 1)}
+                          className="p-1 hover:bg-gray-100 rounded-full text-gray-400"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <span className="font-serif font-bold text-salon-dark text-lg">
+                          {pickerYear}
+                        </span>
+                        <button
+                          onClick={() => setPickerYear((prev) => prev + 1)}
+                          className="p-1 hover:bg-gray-100 rounded-full text-gray-400"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+
+                      {/* Months Grid */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 12 }).map((_, i) => {
+                          const date = new Date(pickerYear, i, 1) // 1st of each month
+                          const isSelected =
+                            date.getMonth() === currentMonth.getMonth() &&
+                            date.getFullYear() === currentMonth.getFullYear()
+                          const isCurrentMonth =
+                            new Date().getMonth() === i && new Date().getFullYear() === pickerYear // Today's month
+
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                setCurrentMonth(date)
+                                setIsMonthPickerOpen(false)
+                              }}
+                              className={`
+                                py-2 rounded-xl text-xs font-bold transition-all
+                                ${
+                                  isSelected
+                                    ? 'bg-salon-accent text-white shadow-lg shadow-salon-accent/30'
+                                    : 'hover:bg-salon-pink/30 text-gray-500 hover:text-salon-dark'
+                                }
+                                ${
+                                  isCurrentMonth && !isSelected
+                                    ? 'border border-salon-accent text-salon-accent'
+                                    : ''
+                                }
+                              `}
+                            >
+                              {format(date, 'MMM')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Backdrop to close picker */}
+                  {isMonthPickerOpen && (
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsMonthPickerOpen(false)}
+                    />
+                  )}
+                </div>
                 <button
                   onClick={handleNextMonth}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
