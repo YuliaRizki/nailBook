@@ -17,8 +17,13 @@ import {
 } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { m } from 'framer-motion'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+
+interface ClientSuggestion {
+  name: string
+  phone: string
+}
 
 interface Appointment {
   id: number
@@ -45,6 +50,62 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
   const [date, setDate] = useState(new Date().toLocaleDateString('en-CA')) // 🔥 Correct local date
   const [open, setOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 🧠 Client Suggestions State
+  const [allClients, setAllClients] = useState<ClientSuggestion[]>([])
+  const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // 1. Fetch unique clients on load (or when drawer opens)
+  useEffect(() => {
+    if (open) {
+      const fetchClients = async () => {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('client_name, client_phone')
+          .not('client_name', 'is', null) // Avoid nulls
+          .order('created_at', { ascending: false })
+
+        if (data) {
+          // Filter unique names using a Map
+          const uniqueClientsMap = new Map()
+          data.forEach((item) => {
+            const name = item.client_name?.trim()
+            if (name && !uniqueClientsMap.has(name.toLowerCase())) {
+              uniqueClientsMap.set(name.toLowerCase(), {
+                name: name,
+                phone: item.client_phone || '',
+              })
+            }
+          })
+          setAllClients(Array.from(uniqueClientsMap.values()))
+        }
+      }
+      fetchClients()
+    }
+  }, [open])
+
+  // 2. Filter suggestions when typing
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setName(value)
+
+    if (value.length > 0) {
+      const filtered = allClients.filter((client) =>
+        client.name.toLowerCase().includes(value.toLowerCase()),
+      )
+      setSuggestions(filtered.slice(0, 5)) // Limit to top 5
+      setShowSuggestions(true)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  const selectClient = (client: ClientSuggestion) => {
+    setName(client.name)
+    setPhone(client.phone) // 🔥 Auto-fill phone
+    setShowSuggestions(false)
+  }
 
   // Helper functions
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,15 +241,36 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
                   <div className="relative">
                     <input
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={handleNameChange} // 🔥 Updated handler
+                      onFocus={() => name && setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
                       type="text"
                       placeholder="e.g. Selena Gomez"
                       className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors"
+                      autoComplete="off"
                     />
                     <User
                       className="absolute right-4 top-[55%] -translate-y-1/2 text-salon-accent pointer-events-none opacity-50"
                       size={20}
                     />
+
+                    {/* 🧠 Suggestions Dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl shadow-salon-pink/20 border border-salon-pink/20 z-50 overflow-hidden max-h-48 overflow-y-auto">
+                        {suggestions.map((client, index) => (
+                          <button
+                            key={index}
+                            onClick={() => selectClient(client)}
+                            className="w-full text-left px-4 py-3 hover:bg-salon-pink/10 transition-colors flex flex-col border-b border-gray-50 last:border-none"
+                          >
+                            <span className="text-sm font-bold text-salon-dark">{client.name}</span>
+                            {client.phone && (
+                              <span className="text-xs text-gray-400">{client.phone}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -9,7 +9,7 @@ import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 import { supabase } from '@/lib/supabase'
 import { m } from 'framer-motion'
 import { toast } from 'sonner'
-import { Sparkles, Plus, CalendarIcon, LogOut } from 'lucide-react'
+import { Sparkles, Plus, CalendarIcon, LogOut, Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatRupiah } from '@/lib/utils'
@@ -39,6 +39,9 @@ export default function Home() {
 
   // 🔒 Auth Check State
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+
+  // Export Menu State
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -249,6 +252,85 @@ export default function Home() {
     // Also update revenue optimistically? fetchMonthlyRevenue handles it on DB insert.
   }
 
+  const handleExportCSV = async (filterDate?: Date) => {
+    // If filterDate is provided, export only that month. Otherwise export all.
+    const isMonthly = !!filterDate
+    const filePrefix = isMonthly
+      ? `nailbook_monthly_${format(filterDate!, 'yyyy-MM')}`
+      : 'nailbook_backup_full'
+
+    const toastId = toast.loading(
+      isMonthly ? 'Exporting monthly data...' : 'Exporting full backup...',
+    )
+
+    try {
+      let query = supabase
+        .from('appointments')
+        .select('*')
+        .order('appointment_date', { ascending: false })
+
+      if (isMonthly) {
+        const start = format(startOfMonth(filterDate!), 'yyyy-MM-dd')
+        const end = format(endOfMonth(filterDate!), 'yyyy-MM-dd')
+        query = query.gte('appointment_date', start).lte('appointment_date', end)
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        toast.dismiss(toastId)
+        toast.info('No data found for this period.')
+        return
+      }
+
+      // Convert to CSV
+      const headers = [
+        'Client Name',
+        'Phone',
+        'Service',
+        'Date',
+        'Time',
+        'Price',
+        'Payment Method',
+        'Notes',
+      ]
+      const csvContent = [
+        headers.join(','),
+        ...data.map((row) =>
+          [
+            `"${row.client_name || ''}"`, // Quote strings to handle commas
+            `"${row.client_phone || ''}"`,
+            `"${row.service_type || ''}"`,
+            row.appointment_date,
+            row.appointment_time,
+            row.price,
+            row.payment_method,
+            `"${(row.notes || '').replace(/"/g, '""')}"`, // Escape quotes in notes
+          ].join(','),
+        ),
+      ].join('\n')
+
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${filePrefix}_${format(new Date(), 'yyyy-MM-dd')}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast.dismiss(toastId)
+      toast.success('Data exported successfully! 📂')
+    } catch (err: any) {
+      toast.dismiss(toastId)
+      console.error('Export failed:', err)
+      toast.error('Failed to export data.')
+    }
+  }
+
   // 🛑 Block render until auth is confirmed
   if (isAuthChecking) {
     return null
@@ -270,8 +352,54 @@ export default function Home() {
           <p className="text-sm text-gray-400 font-light text-left">Thursday, Dec 18</p>
         </div>
         <div className="flex gap-3">
-          <div className="bg-white p-3 rounded-full shadow-sm border border-salon-pink">
-            <Sparkles className="text-salon-accent w-5 h-5" />
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="bg-white p-3 rounded-full shadow-sm border border-salon-pink hover:bg-salon-pink/10 transition-colors"
+              title="Export Options"
+            >
+              <Download className="text-salon-accent w-5 h-5" />
+            </button>
+
+            {isExportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)} />
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl shadow-salon-pink/20 border border-salon-pink/20 z-20 overflow-hidden flex flex-col p-2">
+                  <div className="mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-salon-accent mb-1 px-2">
+                      Export Specific Month
+                    </p>
+                    <input
+                      type="month"
+                      className="w-full text-xs p-2 rounded-lg border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent text-salon-dark"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          // e.target.value is "YYYY-MM"
+                          const [year, month] = e.target.value.split('-')
+                          // Create date object for that month (e.g. 1st of that month)
+                          const selectedMonth = new Date(parseInt(year), parseInt(month) - 1, 1)
+                          handleExportCSV(selectedMonth)
+                          setIsExportMenuOpen(false)
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="h-px bg-gray-100 my-1" />
+
+                  <button
+                    onClick={() => {
+                      handleExportCSV() // Export all
+                      setIsExportMenuOpen(false)
+                    }}
+                    className="w-full text-left px-2 py-2 text-xs font-bold text-gray-500 hover:text-salon-dark hover:bg-salon-pink/10 transition-colors rounded-lg flex items-center gap-2"
+                  >
+                    <Download size={14} />
+                    Export All Time
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           <button
             onClick={handleLogout}
