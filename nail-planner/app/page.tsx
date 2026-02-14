@@ -42,6 +42,7 @@ export default function Home() {
 
   // Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
+  const [exportMonth, setExportMonth] = useState('') // YYYY-MM
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -369,20 +370,29 @@ export default function Home() {
                     <p className="text-[10px] font-bold uppercase tracking-widest text-salon-accent mb-1 px-2">
                       Export Specific Month
                     </p>
-                    <input
-                      type="month"
-                      className="w-full text-xs p-2 rounded-lg border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent text-salon-dark min-w-0"
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          // e.target.value is "YYYY-MM"
-                          const [year, month] = e.target.value.split('-')
-                          // Create date object for that month (e.g. 1st of that month)
-                          const selectedMonth = new Date(parseInt(year), parseInt(month) - 1, 1)
-                          handleExportCSV(selectedMonth)
-                          setIsExportMenuOpen(false)
-                        }
-                      }}
-                    />
+                    <div className="flex gap-2 px-2">
+                      <input
+                        type="month"
+                        value={exportMonth}
+                        onChange={(e) => setExportMonth(e.target.value)}
+                        className="flex-1 text-xs p-2 rounded-lg border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent text-salon-dark min-w-0"
+                      />
+                      <button
+                        disabled={!exportMonth}
+                        onClick={() => {
+                          if (exportMonth) {
+                            const [year, month] = exportMonth.split('-')
+                            const selectedMonth = new Date(parseInt(year), parseInt(month) - 1, 1)
+                            handleExportCSV(selectedMonth)
+                            setIsExportMenuOpen(false)
+                            setExportMonth('') // Reset
+                          }
+                        }}
+                        className="bg-salon-accent text-white p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-salon-dark transition-colors"
+                      >
+                        <Download size={14} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="h-px bg-gray-100 my-1" />
