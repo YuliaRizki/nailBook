@@ -164,16 +164,50 @@ export default function Home() {
     if (!bookingToDelete) return
     const { id } = bookingToDelete
 
+    // Use loose comparison (==) as ID might be number vs string
+    const booking = bookings.find((b) => b.id == id)
+
     // 1. Optimistic Update: Remove immediately
     const previousBookings = bookings
-    setBookings((prev) => prev.filter((b) => b.id !== id))
+    setBookings((prev) => prev.filter((b) => b.id != id))
 
-    const { error } = await supabase.from('appointments').delete().eq('id', id)
+    // 2. Delete Image if exists
+    if (booking?.reference_image) {
+      try {
+        const imageUrl = booking.reference_image
+        const parts = imageUrl.split('/reference_images/')
+        if (parts.length === 2) {
+          const fileName = parts[1]
+          // We don't await this to keep UI snappy, or we catch errors silently
+          supabase.storage
+            .from('reference_images')
+            .remove([fileName])
+            .then(({ error }) => {
+              if (error) console.error('Image delete warning:', error)
+            })
+        }
+      } catch (err) {
+        console.error('Error parsing image URL:', err)
+      }
+    }
+
+    // 3. Database Delete
+    // Using select() ensures we get confirmation if a row was actually matched and deleted
+    const { error, count } = await supabase
+      .from('appointments')
+      .delete({ count: 'exact' })
+      .eq('id', id)
 
     if (error) {
       console.error('Error deleting:', error.message)
-      toast.error('Could not delete appointment')
-      // 2. Rollback if failed
+      toast.error(`Delete failed: ${error.message}`)
+      // Rollback
+      setBookings(previousBookings)
+    } else if (count === 0) {
+      // No rows deleted - likely permission issue or ID mismatch in DB
+      console.warn('Delete operation returned 0 affected rows. Check RLS or ID.')
+      toast.error('Could not delete. You might not be the owner of this record.')
+      // Rollback
       setBookings(previousBookings)
     } else {
       toast.success('Client data deleted.')
@@ -348,7 +382,7 @@ export default function Home() {
           </m.div>
         )}
       </div>
-      <AddAppointmentDrawer onAdd={addBooking} />
+      <AddAppointmentDrawer onAdd={addBooking} onSaved={() => fetchBookings(selectedDate)} />
 
       {/* Monthly Revenue Drawer */}
       <MonthlyRevenueDrawer

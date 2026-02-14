@@ -29,9 +29,10 @@ interface Appointment {
 
 interface AddAppointmentDrawerProps {
   onAdd: (appointment: Appointment) => void
+  onSaved?: () => void
 }
 
-export default function AddAppointmentDrawer({ onAdd }: AddAppointmentDrawerProps) {
+export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentDrawerProps) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
@@ -91,7 +92,7 @@ export default function AddAppointmentDrawer({ onAdd }: AddAppointmentDrawerProp
 
       if (image) {
         const fileExt = image.name.split('.').pop()
-        const fileName = `${Date.now()}.${fileExt}`
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
         const { error: uploadError } = await supabase.storage
           .from('reference_images')
           .upload(fileName, image)
@@ -139,6 +140,7 @@ export default function AddAppointmentDrawer({ onAdd }: AddAppointmentDrawerProp
         toast.error('Failed to sync appointment to server.')
       } else {
         console.log('Synced to DB successfully')
+        onSaved?.()
       }
     } catch (err) {
       console.error('Unexpected error:', err)
