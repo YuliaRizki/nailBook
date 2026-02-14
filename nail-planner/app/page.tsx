@@ -364,14 +364,14 @@ export default function Home() {
             {isExportMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)} />
-                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl shadow-salon-pink/20 border border-salon-pink/20 z-20 overflow-hidden flex flex-col p-2">
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl shadow-salon-pink/20 border border-salon-pink/20 z-50 overflow-hidden flex flex-col p-2">
                   <div className="mb-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-salon-accent mb-1 px-2">
                       Export Specific Month
                     </p>
                     <input
                       type="month"
-                      className="w-full text-xs p-2 rounded-lg border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent text-salon-dark"
+                      className="w-full text-xs p-2 rounded-lg border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent text-salon-dark min-w-0"
                       onChange={(e) => {
                         if (e.target.value) {
                           // e.target.value is "YYYY-MM"
