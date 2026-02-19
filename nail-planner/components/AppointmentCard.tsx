@@ -1,7 +1,7 @@
 'use client'
 
 import { m } from 'framer-motion'
-import { Clock, MessageCircle, Trash2 } from 'lucide-react'
+import { MessageCircle, Trash2 } from 'lucide-react'
 
 interface AppointmentProps {
   id: string
@@ -32,7 +32,7 @@ export default function AppointmentCard({
     <m.div
       whileHover={{ scale: 1.02 }}
       onClick={onClick}
-      className="relative bg-white p-5 rounded-3xl border border-salon-pink/50 shadow-sm flex justify-between items-center group mb-4 cursor-pointer overflow-hidden"
+      className="relative bg-white p-5 rounded-3xl border border-salon-pink/50 shadow-sm flex justify-between items-center group mb-4 cursor-pointer"
     >
       <div className="flex gap-4 items-center min-w-0 flex-1">
         {/* Time Circle */}
@@ -53,7 +53,10 @@ export default function AppointmentCard({
       {/* Actions */}
       <div className="flex gap-2">
         <button
-          onClick={sendWhatsApp}
+          onClick={(e) => {
+            e.stopPropagation()
+            sendWhatsApp()
+          }}
           className="bg-green-50 p-3 rounded-full text-green-600 hover:bg-green-100 transition-colors"
         >
           <MessageCircle size={20} fill="currentColor" className="opacity-20" />

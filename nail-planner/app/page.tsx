@@ -492,27 +492,31 @@ export default function Home() {
         {loading ? (
           <p className="text-center text-gray-400 py-10">Loading your day...</p>
         ) : bookings.length > 0 ? (
-          bookings.map((booking, index) => (
-            <m.div
+          bookings.map((booking) => (
+            <div
               key={booking.id}
-              whileHover={{ scale: 1.02, y: -5 }}
-              whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className="sticky top-[116px] z-20"
             >
-              <AppointmentCard
-                id={booking.id}
-                clientName={booking.name}
-                service={booking.service}
-                time={booking.time}
-                onDelete={handleDelete}
-                onClick={() => {
-                  setSelectedBooking(booking)
-                  setIsDetailsOpen(true)
-                }}
-              />
-            </m.div>
+              <m.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              >
+                <AppointmentCard
+                  id={booking.id}
+                  clientName={booking.name}
+                  service={booking.service}
+                  time={booking.time}
+                  onDelete={handleDelete}
+                  onClick={() => {
+                    setSelectedBooking(booking)
+                    setIsDetailsOpen(true)
+                  }}
+                />
+              </m.div>
+            </div>
           ))
         ) : (
           <m.div
