@@ -32,7 +32,7 @@ export default function AppointmentCard({
     <m.div
       whileHover={{ scale: 1.02 }}
       onClick={onClick}
-      className="relative bg-white p-5 rounded-3xl border border-salon-pink/50 shadow-sm flex justify-between items-center group mb-4 cursor-pointer"
+      className="relative bg-white p-5 rounded-3xl border border-salon-pink/50 shadow-sm flex justify-between items-center group mb-4 cursor-pointer overflow-hidden"
     >
       <div className="flex gap-4 items-center min-w-0 flex-1">
         {/* Time Circle */}

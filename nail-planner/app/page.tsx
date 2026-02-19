@@ -452,7 +452,12 @@ export default function Home() {
       />
 
       {/* 1. PLACE THE SCROLLER HERE */}
-      <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+      <m.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="sticky top-0 z-30 bg-salon-nude/95 backdrop-blur-sm py-2 mx-[-24px] px-[24px] border-b border-salon-pink/20 mb-4"
+      >
         <DateScroller onDateChange={handleDateChange} />
       </m.div>
 
