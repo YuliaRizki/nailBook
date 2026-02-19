@@ -4,7 +4,6 @@ import { Drawer } from 'vaul'
 import { toast } from 'sonner'
 import {
   Plus,
-  X,
   Calendar,
   Clock,
   User,
@@ -37,6 +36,43 @@ interface AddAppointmentDrawerProps {
   onSaved?: () => void
 }
 
+const toLocalInputDate = (d: Date = new Date()) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const normalizeTime = (value: string) => {
+  const cleaned = value.replace('.', ':').trim()
+  if (!cleaned) return ''
+
+  const [rawHour = '', rawMinute = ''] = cleaned.split(':')
+  if (!rawHour || !rawMinute) return cleaned
+
+  const hour = rawHour.padStart(2, '0')
+  const minute = rawMinute.padStart(2, '0').slice(0, 2)
+  return `${hour}:${minute}`
+}
+
+const formatDisplayDate = (value: string) => {
+  if (!value) return 'Select date'
+
+  const [yearStr, monthStr, dayStr] = value.split('-')
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  if (!year || !month || !day) return value
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${day} ${monthNames[month - 1]} ${year}`
+}
+
+const formatDisplayTime = (value: string) => {
+  const normalized = normalizeTime(value)
+  return normalized || '--:--'
+}
+
 export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentDrawerProps) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -47,9 +83,12 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
   const [price, setPrice] = useState('') // Raw number string
   const [service, setService] = useState('')
   const [time, setTime] = useState('')
-  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA')) // 🔥 Correct local date
+  const [date, setDate] = useState(toLocalInputDate())
   const [open, setOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const drawerBodyRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const timeInputRef = useRef<HTMLInputElement>(null)
 
   // 🧠 Client Suggestions State
   const [allClients, setAllClients] = useState<ClientSuggestion[]>([])
@@ -60,7 +99,7 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
   useEffect(() => {
     if (open) {
       const fetchClients = async () => {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('appointments')
           .select('client_name, client_phone')
           .not('client_name', 'is', null) // Avoid nulls
@@ -83,6 +122,14 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
       }
       fetchClients()
     }
+  }, [open])
+
+  // Keep mobile/desktop open behavior consistent: always start from top of the form.
+  useEffect(() => {
+    if (!open) return
+    requestAnimationFrame(() => {
+      drawerBodyRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+    })
   }, [open])
 
   // 2. Filter suggestions when typing
@@ -127,7 +174,7 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
       id: tempId,
       name,
       service,
-      time,
+      time: normalizeTime(time),
       price: Number(price), // Pass price to optimistic
     }
     onAdd(optimisticBooking)
@@ -142,7 +189,7 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
     setPrice('')
     setService('Gel Manicure')
     setPaymentMethod('Cash')
-    setDate(new Date().toLocaleDateString('en-CA'))
+    setDate(toLocalInputDate())
 
     toast.success('Appointment successfully created! ✨')
 
@@ -186,7 +233,7 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
           client_name: name,
           client_phone: phone,
           service_type: service,
-          appointment_time: time,
+          appointment_time: normalizeTime(time),
           appointment_date: date,
           notes: notes,
           reference_image: imageUrl,
@@ -225,7 +272,7 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
         <Drawer.Content className="bg-salon-nude flex flex-col rounded-t-[32px] h-[96%] mt-24 fixed bottom-0 left-0 right-0 z-[100] outline-none">
-          <div className="p-4 bg-white rounded-t-[32px] flex-1 overflow-y-auto">
+          <div ref={drawerBodyRef} className="p-4 bg-white rounded-t-[32px] flex-1 overflow-y-auto">
             <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 mb-8" />
             <div className="max-w-md mx-auto">
               <Drawer.Title className="text-2xl font-serif italic mb-6 text-salon-dark">
@@ -357,13 +404,21 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
                     Appointment Date
                   </label>
                   <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => dateInputRef.current?.showPicker?.()}
+                      className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors cursor-pointer text-left text-salon-dark"
+                    >
+                      {formatDisplayDate(date)}
+                    </button>
                     <input
+                      ref={dateInputRef}
                       type="date"
-                      min={new Date().toISOString().split('T')[0]} // 🔥 Disable past dates
+                      min={toLocalInputDate()} // Disable past dates using local date, not UTC
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                      className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none focus:border-salon-accent transition-colors cursor-pointer"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      aria-label="Appointment date"
                     />
                     <Calendar
                       className="absolute right-4 top-[55%] -translate-y-1/2 text-salon-accent pointer-events-none"
@@ -378,12 +433,20 @@ export default function AddAppointmentDrawer({ onAdd, onSaved }: AddAppointmentD
                       Time
                     </label>
                     <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => timeInputRef.current?.showPicker?.()}
+                        className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none cursor-pointer text-left text-salon-dark"
+                      >
+                        {formatDisplayTime(time)}
+                      </button>
                       <input
+                        ref={timeInputRef}
                         type="time"
                         value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                        className="w-full mt-2 p-4 rounded-2xl border border-salon-pink/30 bg-salon-nude/30 outline-none cursor-pointer"
+                        onChange={(e) => setTime(normalizeTime(e.target.value))}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        aria-label="Appointment time"
                       />
                       <Clock
                         className="absolute right-4 top-[55%] -translate-y-1/2 text-salon-accent pointer-events-none"
