@@ -16,10 +16,12 @@ import {
   ChevronDown,
   Pencil,
   Check,
+  Banknote,
 } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import { formatRupiah } from "@/lib/utils";
 
 interface ClientDetailsDrawerProps {
   booking: {
@@ -32,6 +34,7 @@ interface ClientDetailsDrawerProps {
     notes?: string;
     reference_image?: string;
     payment_method?: string;
+    price?: number;
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -171,6 +174,7 @@ export default function ClientDetailsDrawer({
     date: booking?.appointment_date || "",
     service: booking?.service_type || "",
     notes: booking?.notes || "",
+    price: booking?.price ? booking.price.toString() : "",
   });
   const [isSavingSession, setIsSavingSession] = useState(false);
 
@@ -181,9 +185,15 @@ export default function ClientDetailsDrawer({
         date: booking?.appointment_date || "",
         service: booking?.service_type || "",
         notes: booking?.notes || "",
+        price: booking?.price ? booking.price.toString() : "",
       });
     }
   }, [booking, isEditingSession]);
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = e.target.value.replace(/\D/g, "");
+    setSessionData((prev) => ({ ...prev, price: numericValue }));
+  };
 
   const handleSaveSession = async () => {
     setIsSavingSession(true);
@@ -194,6 +204,7 @@ export default function ClientDetailsDrawer({
         appointment_date: sessionData.date,
         service_type: sessionData.service,
         notes: sessionData.notes,
+        price: sessionData.price ? Number(sessionData.price) : 0,
       })
       .eq("id", booking.id);
 
@@ -206,6 +217,7 @@ export default function ClientDetailsDrawer({
         booking.appointment_date = sessionData.date;
         booking.service_type = sessionData.service;
         booking.notes = sessionData.notes;
+        booking.price = sessionData.price ? Number(sessionData.price) : 0;
       }
       setIsEditingSession(false);
     }
@@ -346,7 +358,7 @@ export default function ClientDetailsDrawer({
                   )}
                 </div>
 
-                <div className="bg-salon-nude/50 p-4 rounded-2xl">
+                <div className="bg-salon-nude/50 p-4 rounded-2xl relative">
                   <div className="flex items-center gap-2 text-salon-accent mb-2">
                     <Star size={16} />
                     <span className="text-xs font-bold uppercase">Service</span>
@@ -359,7 +371,7 @@ export default function ClientDetailsDrawer({
                       className="w-full text-lg font-bold text-salon-dark bg-white border border-salon-pink/40 rounded-lg px-2 py-1 outline-none"
                     />
                   ) : (
-                    <p className="text-lg font-bold text-salon-dark">
+                    <p className="text-lg font-bold text-salon-dark break-words">
                       {booking.service_type}
                     </p>
                   )}
@@ -388,6 +400,26 @@ export default function ClientDetailsDrawer({
                     <option value="QRIS">QRIS</option>
                     <option value="Transfer">Transfer</option>
                   </select>
+                </div>
+
+                <div className="bg-salon-nude/50 p-4 rounded-2xl col-span-2 relative">
+                  <div className="flex items-center gap-2 text-salon-accent mb-2">
+                    <Banknote size={16} />
+                    <span className="text-xs font-bold uppercase">Amount</span>
+                  </div>
+                  {isEditingSession ? (
+                    <input
+                      type="text"
+                      value={sessionData.price ? formatRupiah(Number(sessionData.price)) : ""}
+                      onChange={handlePriceChange}
+                      placeholder="Rp 0"
+                      className="w-full text-lg font-bold text-salon-dark bg-white border border-salon-pink/40 rounded-lg px-2 py-1 outline-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold text-salon-dark">
+                      {booking.price ? formatRupiah(booking.price) : "Rp 0"}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -459,11 +491,21 @@ export default function ClientDetailsDrawer({
                           <p className="font-bold text-sm text-salon-accent">
                             {record.service_type}
                           </p>
-                          <p className="text-xs text-white/60">
-                            {new Date(
-                              record.appointment_date
-                            ).toLocaleDateString()}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-white/60">
+                              {new Date(
+                                record.appointment_date
+                              ).toLocaleDateString()}
+                            </p>
+                            {record.price ? (
+                              <>
+                                <span className="text-white/30">•</span>
+                                <p className="text-xs font-bold text-salon-accent/80">
+                                  {formatRupiah(record.price)}
+                                </p>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {new Date(record.appointment_date) > new Date() && (
